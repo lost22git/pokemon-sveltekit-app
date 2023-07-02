@@ -4,7 +4,7 @@
   import { writable } from "svelte/store";
 
   let toastsIdGen = 0;
-  export const toasts = writable([]);
+  const toasts = writable([]);
   $: displayToasts = [...$toasts].reverse();
 
   export const emitToast = (
