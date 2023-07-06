@@ -1,4 +1,7 @@
-export const load = async ({ fetch }) => {
+export const load = async ({
+  // @ts-ignore i dont knonw the type of fetch, fix me
+  fetch,
+}) => {
   try {
     const res = await fetch("https://pokeapi.co/api/v2/pokemon?limit=10");
     if (res.ok) {

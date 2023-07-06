@@ -1,25 +1,43 @@
 <script lang="ts">
-  // @ts-nocheck
   import { Toast } from "flowbite-svelte";
   import { writable } from "svelte/store";
+  import type { Writable } from "svelte/store";
+
+  type ToastColor =
+    | "gray"
+    | "red"
+    | "yellow"
+    | "green"
+    | "indigo"
+    | "purple"
+    | "blue"
+    | "orange";
+
+  interface ToastData {
+    id: number;
+    text: string;
+    color: ToastColor;
+  }
 
   let toastsIdGen = 0;
-  const toasts = writable([]);
+  const toasts: Writable<ToastData[]> = writable([]);
   $: displayToasts = [...$toasts].reverse();
 
   export const emitToast = (
     msg: string,
-    color: string,
-    timeoutMs?: number = 5000
+    color: ToastColor,
+    timeoutMs: number = 5000
   ) => {
     const id = toastsIdGen++;
-    const value = {
+    const value: ToastData = {
       id: id,
       text: msg,
       color: color,
     };
-    toasts.update((arr) => [...arr, value]);
+    // copy!
+    toasts.update((arr: ToastData[]) => [...arr, value]);
     setTimeout(() => {
+      // copy!
       $toasts = $toasts.filter((item) => item.id !== id);
     }, timeoutMs);
   };
@@ -28,6 +46,7 @@
 <main>
   <div class="z-50 fixed top-10 right-10 flex flex-col space-y-10">
     {#each displayToasts as item}
+      <!-- TODO class: only works with red | green | gray, and why? -->
       <Toast
         simple
         color={item.color}

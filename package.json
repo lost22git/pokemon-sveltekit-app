@@ -30,6 +30,7 @@
     "@popperjs/core": "^2.11.8",
     "flowbite": "^1.6.6",
     "flowbite-svelte": "^0.39.1",
+    "svelte-sonner": "^0.0.11",
     "tailwind-merge": "^1.13.2"
   }
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // @ts-nocheck
+  //@ts-nocheck
   import { writable } from "svelte/store";
   import {
     Table,
@@ -19,9 +19,11 @@
     DropdownItem,
     Badge,
     Spinner,
+    Tooltip,
   } from "flowbite-svelte";
-  import Toasts from "$lib/Toasts.svelte";
-  let toasts;
+  // import Toasts from "$lib/Toasts.svelte";
+  // let toasts;
+  import { Toaster, toast } from "svelte-sonner";
 
   const badgeClass =
     "w-5 h-4 ml-2 p-0 font-semibold text-primary-800 bg-white dark:text-gray-200 dark:bg-gray-700";
@@ -95,24 +97,25 @@
   let pageNum = 1;
   let pageSize = 10;
   let pageTotal = Math.ceil(itemsTotal / pageSize);
-  let prevPageLoading = false;
-  let nextPageLoading = false;
-  let prevPageLoadingTimeoutId = null;
-  let prevPageLoadingTimeout = 300;
-  let nextPageLoadingTimeoutId = null;
-  let nextPageLoadingTimeout = 300;
+  enum PageBtnStatus {
+    Init,
+    Clicked,
+    Loading,
+  }
+  let prevPageBtnStatus: PageBtnStatus = PageBtnStatus.Init;
+  let nextPageBtnStatus: PageBtnStatus = PageBtnStatus.Init;
+  let prevPageLoadingDelay = 300;
+  let nextPageLoadingDelay = 300;
   const updatePageNum = async (newPageNum) => {
     console.log(`page_num updated: ${newPageNum}`);
     pageNum = newPageNum;
-    // fetch page
     let offset = (pageNum - 1) * pageSize;
     let limit = pageSize;
     let res = await fetch(
       `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`
     );
     if (!res.ok) {
-      toasts.emitToast(`fetch data and respond status=${res.status}`, "red");
-      return;
+      throw Error(`data fetching respond failed, status=${res.status}`);
     }
     let content = await res.json();
     items = content?.results ?? [];
@@ -121,43 +124,57 @@
     pageTotal = Math.ceil(itemsTotal / pageSize);
   };
   const prevPage = async () => {
-    prevPageLoadingTimeoutId = setTimeout(() => {
-      if (!prevPageLoading) {
-        prevPageLoading = true;
+    if (prevPageBtnStatus !== PageBtnStatus.Init) {
+      return;
+    }
+    prevPageBtnStatus = PageBtnStatus.Clicked;
+    const timeoutId = setTimeout(() => {
+      if (prevPageBtnStatus === PageBtnStatus.Clicked) {
+        prevPageBtnStatus = PageBtnStatus.Loading;
       }
-    }, prevPageLoadingTimeout);
+    }, prevPageLoadingDelay);
     try {
       await updatePageNum(Math.max(1, pageNum - 1));
     } catch (e) {
-      toasts.emitToast(`${e.message}`, "red");
+      // toasts.emitToast(e.message, "red");
+      toast.error(e.message, { duration: 5000 });
     } finally {
-      if (prevPageLoadingTimeoutId !== null) {
-        clearTimeout(prevPageLoadingTimeoutId);
-      }
-      prevPageLoading = false;
+      clearTimeout(timeoutId);
+      prevPageBtnStatus = PageBtnStatus.Init;
     }
   };
   const nextPage = async () => {
-    nextPageLoadingTimeoutId = setTimeout(() => {
-      if (!nextPageLoading) {
-        nextPageLoading = true;
+    if (nextPageBtnStatus !== PageBtnStatus.Init) {
+      return;
+    }
+    nextPageBtnStatus = PageBtnStatus.Clicked;
+    const timeoutId = setTimeout(() => {
+      if (nextPageBtnStatus === PageBtnStatus.Clicked) {
+        nextPageBtnStatus = PageBtnStatus.Loading;
       }
-    }, nextPageLoadingTimeout);
+    }, nextPageLoadingDelay);
     try {
       await updatePageNum(Math.min(pageTotal, pageNum + 1));
     } catch (e) {
-      toasts.emitToast(`${e.message}`, "red");
+      // toasts.emitToast(e.message, "red");
+      toast.error(e.message, { duration: 5000 });
     } finally {
-      if (nextPageLoadingTimeoutId !== null) {
-        clearTimeout(nextPageLoadingTimeoutId);
-      }
-      nextPageLoading = false;
+      clearTimeout(timeoutId);
+      nextPageBtnStatus = PageBtnStatus.Init;
     }
   };
 </script>
 
 <!-- toasts -->
-<Toasts bind:this={toasts} />
+<!-- <Toasts bind:this={toasts} /> -->
+<Toaster
+  theme="light"
+  expand
+  visibleToasts="9"
+  position="top-right"
+  richColors
+/>
+
 <div
   class="sticky top-10 z-40 flex flex-wrap space-x-10 space-y-3 justify-center"
 >
@@ -197,31 +214,47 @@
   <!-- pagination  -->
   <div class="flex flex-wrap flex-2">
     <ButtonGroup class="mr-10">
+      <!-- prev -->
       <Button
+        id="prevPage"
         outline
         color="primary"
         on:click={prevPage}
-        class="w-32 flex items-center justify-center"
+        class="w-28 flex items-center justify-center"
       >
-        {#if prevPageLoading}
+        {#if prevPageBtnStatus === PageBtnStatus.Loading}
           <Spinner class="mr-3" size="4" color="white" />Loading
         {:else}
           prev
         {/if}
       </Button>
+      <!-- next -->
       <Button
+        id="nextPage"
         outline
         color="primary"
         on:click={nextPage}
-        class="w-32 flex items-center justify-center"
+        class="w-28 flex items-center justify-center"
       >
-        {#if nextPageLoading}
+        {#if nextPageBtnStatus === PageBtnStatus.Loading}
           <Spinner class="mr-3" size="4" color="white" />Loading
         {:else}
           next
         {/if}
       </Button>
     </ButtonGroup>
+    <!-- Tooltip -->
+    {#if prevPageBtnStatus !== PageBtnStatus.Init}
+      <Tooltip placement="bottom" trigger="click" triggeredBy="#prevPage">
+        Take it easy, i am working ^_^
+      </Tooltip>
+    {/if}
+    {#if nextPageBtnStatus !== PageBtnStatus.Init}
+      <Tooltip placement="bottom" trigger="click" triggeredBy="#nextPage">
+        Take it easy, i am working ^_^
+      </Tooltip>
+    {/if}
+    <!-- page metadata -->
     <ButtonGroup>
       <Button outline color="primary">
         page number:
