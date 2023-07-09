@@ -11,6 +11,7 @@
   } from "flowbite-svelte";
 
   import {
+    Kbd,
     Input,
     ButtonGroup,
     Button,
@@ -24,9 +25,33 @@
   // import Toasts from "$lib/Toasts.svelte";
   // let toasts;
   import { Toaster, toast } from "svelte-sonner";
+  import { onMount } from "svelte";
 
   const badgeClass =
     "w-5 h-4 ml-2 p-0 font-semibold text-primary-800 bg-white dark:text-gray-200 dark:bg-gray-700";
+
+  // ctrl+k focus search input element
+  const searchHotkey: string[] = ["ctrlKey", "k"];
+  onMount(() => {
+    const searchEl = document.getElementById("search");
+    const handleKeydown = (event: KeyboardEvent) => {
+      const isHotkeyPressed = searchHotkey.every(
+        (key) => (event as any)[key] || event.key === key
+      );
+
+      if (isHotkeyPressed) {
+        console.log(`hotkey pressed`);
+        event.preventDefault(); // 防止浏览器默认处理
+        searchEl?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeydown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeydown);
+    };
+  });
 
   export let data; // data from page.ts load()
   let items = data?.content?.results ?? [];
@@ -97,13 +122,13 @@
   let pageNum = 1;
   let pageSize = 10;
   let pageTotal = Math.ceil(itemsTotal / pageSize);
-  enum PageBtnStatus {
+  enum PageBtnState {
     Init,
     Clicked,
     Loading,
   }
-  let prevPageBtnStatus: PageBtnStatus = PageBtnStatus.Init;
-  let nextPageBtnStatus: PageBtnStatus = PageBtnStatus.Init;
+  let prevPageBtnState: PageBtnState = PageBtnState.Init;
+  let nextPageBtnState: PageBtnState = PageBtnState.Init;
   let prevPageLoadingDelay = 300;
   let nextPageLoadingDelay = 300;
   const updatePageNum = async (newPageNum) => {
@@ -124,13 +149,13 @@
     pageTotal = Math.ceil(itemsTotal / pageSize);
   };
   const prevPage = async () => {
-    if (prevPageBtnStatus !== PageBtnStatus.Init) {
+    if (prevPageBtnState !== PageBtnState.Init) {
       return;
     }
-    prevPageBtnStatus = PageBtnStatus.Clicked;
+    prevPageBtnState = PageBtnState.Clicked;
     const timeoutId = setTimeout(() => {
-      if (prevPageBtnStatus === PageBtnStatus.Clicked) {
-        prevPageBtnStatus = PageBtnStatus.Loading;
+      if (prevPageBtnState === PageBtnState.Clicked) {
+        prevPageBtnState = PageBtnState.Loading;
       }
     }, prevPageLoadingDelay);
     try {
@@ -140,17 +165,17 @@
       toast.error(e.message, { duration: 5000 });
     } finally {
       clearTimeout(timeoutId);
-      prevPageBtnStatus = PageBtnStatus.Init;
+      prevPageBtnState = PageBtnState.Init;
     }
   };
   const nextPage = async () => {
-    if (nextPageBtnStatus !== PageBtnStatus.Init) {
+    if (nextPageBtnState !== PageBtnState.Init) {
       return;
     }
-    nextPageBtnStatus = PageBtnStatus.Clicked;
+    nextPageBtnState = PageBtnState.Clicked;
     const timeoutId = setTimeout(() => {
-      if (nextPageBtnStatus === PageBtnStatus.Clicked) {
-        nextPageBtnStatus = PageBtnStatus.Loading;
+      if (nextPageBtnState === PageBtnState.Clicked) {
+        nextPageBtnState = PageBtnState.Loading;
       }
     }, nextPageLoadingDelay);
     try {
@@ -160,7 +185,7 @@
       toast.error(e.message, { duration: 5000 });
     } finally {
       clearTimeout(timeoutId);
-      nextPageBtnStatus = PageBtnStatus.Init;
+      nextPageBtnState = PageBtnState.Init;
     }
   };
 </script>
@@ -193,7 +218,17 @@
         </DropdownItem>
       {/each}
     </Dropdown>
-    <Input placeholder="Search" bind:value={searchTerm.value} />
+    <Input
+      id="search"
+      placeholder="Search"
+      bind:value={searchTerm.value}
+      class="h-full"
+    >
+      <div slot="right">
+        <Kbd class="px-2 py-1">CTRL</Kbd>
+        <Kbd class="px-2 py-1">K</Kbd>
+      </div>
+    </Input>
     <Button tolor="primary" class="!p-2.5" type="submit">
       <svg
         class="w-5 h-5"
@@ -222,7 +257,7 @@
         on:click={prevPage}
         class="w-28 flex items-center justify-center"
       >
-        {#if prevPageBtnStatus === PageBtnStatus.Loading}
+        {#if prevPageBtnState === PageBtnState.Loading}
           <Spinner class="mr-3" size="4" color="white" />Loading
         {:else}
           prev
@@ -236,7 +271,7 @@
         on:click={nextPage}
         class="w-28 flex items-center justify-center"
       >
-        {#if nextPageBtnStatus === PageBtnStatus.Loading}
+        {#if nextPageBtnState === PageBtnState.Loading}
           <Spinner class="mr-3" size="4" color="white" />Loading
         {:else}
           next
@@ -244,12 +279,12 @@
       </Button>
     </ButtonGroup>
     <!-- Tooltip -->
-    {#if prevPageBtnStatus !== PageBtnStatus.Init}
+    {#if prevPageBtnState !== PageBtnState.Init}
       <Tooltip placement="bottom" trigger="click" triggeredBy="#prevPage">
         Take it easy, i am working ^_^
       </Tooltip>
     {/if}
-    {#if nextPageBtnStatus !== PageBtnStatus.Init}
+    {#if nextPageBtnState !== PageBtnState.Init}
       <Tooltip placement="bottom" trigger="click" triggeredBy="#nextPage">
         Take it easy, i am working ^_^
       </Tooltip>
