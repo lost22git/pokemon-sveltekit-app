@@ -1,5 +1,5 @@
 <script lang="ts">
-  //@ts-nocheck
+  // @ts-nocheck
   import { writable } from "svelte/store";
   import {
     Table,
@@ -27,7 +27,7 @@
 
   import MyButton from "$lib/MyButton.svelte";
 
-  import { PageT } from "$lib/types.ts";
+  import { PageT } from "$lib/types";
 
   const badgeClass =
     "w-5 h-4 ml-2 p-0 font-semibold text-primary-800 bg-white dark:text-gray-200 dark:bg-gray-700";
@@ -53,15 +53,14 @@
     };
   });
 
-  let pageData: PageT = new PageT(1, 10);
+  let pageData: PageT<any> = new PageT(1, 10);
 
   onMount(async () => {
     await firstPage();
-    return () => {};
   });
 
   // pagination
-  const fetchPage = async (newPageNum) => {
+  const fetchPage = async (newPageNum: number) => {
     console.log(`fetchPage page_num: ${newPageNum}`);
     let offset = (newPageNum - 1) * pageData.pageSize;
     let limit = pageData.pageSize;
@@ -79,7 +78,7 @@
   const firstPage = async () => {
     try {
       pageData = await fetchPage(1);
-    } catch (e) {
+    } catch (e: any) {
       // toasts.emitToast(e.message, "red");
       toast.error(e.message, { duration: 5000 });
     }
@@ -87,7 +86,7 @@
   const prevPage = async () => {
     try {
       pageData = await fetchPage(Math.max(1, pageData.pageNum - 1));
-    } catch (e) {
+    } catch (e: any) {
       // toasts.emitToast(e.message, "red");
       toast.error(e.message, { duration: 5000 });
     }
@@ -97,7 +96,7 @@
       pageData = await fetchPage(
         Math.min(pageData.pageTotal, pageData.pageNum + 1)
       );
-    } catch (e) {
+    } catch (e: any) {
       // toasts.emitToast(e.message, "red");
       toast.error(e.message, { duration: 5000 });
     }
@@ -170,7 +169,7 @@
 <Toaster
   theme="light"
   expand
-  visibleToasts="9"
+  visibleToasts={9}
   position="top-right"
   richColors
 />
@@ -228,7 +227,7 @@
       <!-- prev -->
       <MyButton
         id="prevPage"
-        width="28"
+        width={28}
         tooltip="Take it easy, i am working ^_^"
         text="prev"
         onClick={prevPage}
@@ -236,7 +235,7 @@
       <!-- next -->
       <MyButton
         id="nextPage"
-        width="28"
+        width={28}
         tooltip="Take it easy, i am working ^_^"
         text="next"
         onClick={nextPage}
