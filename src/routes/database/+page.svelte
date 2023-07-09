@@ -27,6 +27,8 @@
 
   import MyButton from "$lib/MyButton.svelte";
 
+  import { PageT } from "$lib/types.ts";
+
   const badgeClass =
     "w-5 h-4 ml-2 p-0 font-semibold text-primary-800 bg-white dark:text-gray-200 dark:bg-gray-700";
 
@@ -51,12 +53,58 @@
     };
   });
 
-  export let data; // data from page.ts load()
-  let items = data?.content?.results ?? [];
-  let itemsTotal = data?.content?.count ?? 0;
-  const displayItems = writable([]);
+  let pageData: PageT = new PageT(1, 10);
+
+  onMount(async () => {
+    await firstPage();
+    return () => {};
+  });
+
+  // pagination
+  const fetchPage = async (newPageNum) => {
+    console.log(`fetchPage page_num: ${newPageNum}`);
+    let offset = (newPageNum - 1) * pageData.pageSize;
+    let limit = pageData.pageSize;
+    let res = await fetch(
+      `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`
+    );
+    if (!res.ok) {
+      throw Error(`fetchPage respond failed, status=${res.status}`);
+    }
+    let content = await res.json();
+    const itemTotal = content?.count ?? 0;
+    const items = content?.results ?? [];
+    return new PageT(newPageNum, 10, itemTotal, items);
+  };
+  const firstPage = async () => {
+    try {
+      pageData = await fetchPage(1);
+    } catch (e) {
+      // toasts.emitToast(e.message, "red");
+      toast.error(e.message, { duration: 5000 });
+    }
+  };
+  const prevPage = async () => {
+    try {
+      pageData = await fetchPage(Math.max(1, pageData.pageNum - 1));
+    } catch (e) {
+      // toasts.emitToast(e.message, "red");
+      toast.error(e.message, { duration: 5000 });
+    }
+  };
+  const nextPage = async () => {
+    try {
+      pageData = await fetchPage(
+        Math.min(pageData.pageTotal, pageData.pageNum + 1)
+      );
+    } catch (e) {
+      // toasts.emitToast(e.message, "red");
+      toast.error(e.message, { duration: 5000 });
+    }
+  };
 
   // display
+  const itemsDisplay = writable([]);
   const displayKeys = [
     { field: "name", text: "NAME" },
     { field: "url", text: "URL" },
@@ -90,7 +138,7 @@
   // watch vars and rerun
   $: {
     console.log(`items or searchTerm or sortKey or sortDirection updated`);
-    const filteredItems = items.filter((item) => {
+    const filteredItems = pageData.items.filter((item) => {
       const field = searchTerm.key.field;
       const matchValue = searchTerm.value.toLowerCase();
       if (field == "all") {
@@ -113,46 +161,8 @@
       }
       return 0;
     });
-    displayItems.set(sortedItems);
+    itemsDisplay.set(sortedItems);
   }
-
-  // pagination
-  let pageNum = 1;
-  let pageSize = 10;
-  let pageTotal = Math.ceil(itemsTotal / pageSize);
-  const updatePageNum = async (newPageNum) => {
-    console.log(`page_num updated: ${newPageNum}`);
-    let offset = (newPageNum - 1) * pageSize;
-    let limit = pageSize;
-    let res = await fetch(
-      `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`
-    );
-    if (!res.ok) {
-      throw Error(`data fetching respond failed, status=${res.status}`);
-    }
-    pageNum = newPageNum;
-    let content = await res.json();
-    items = content?.results ?? [];
-    itemsTotal = content?.count ?? 0;
-    console.log(`items_total updated: ${itemsTotal}`);
-    pageTotal = Math.ceil(itemsTotal / pageSize);
-  };
-  const prevPage = async () => {
-    try {
-      await updatePageNum(Math.max(1, pageNum - 1));
-    } catch (e) {
-      // toasts.emitToast(e.message, "red");
-      toast.error(e.message, { duration: 5000 });
-    }
-  };
-  const nextPage = async () => {
-    try {
-      await updatePageNum(Math.min(pageTotal, pageNum + 1));
-    } catch (e) {
-      // toasts.emitToast(e.message, "red");
-      toast.error(e.message, { duration: 5000 });
-    }
-  };
 </script>
 
 <!-- toasts -->
@@ -236,19 +246,19 @@
     <ButtonGroup>
       <Button outline color="primary">
         page number:
-        <Badge class={badgeClass}>{pageNum}</Badge>
+        <Badge class={badgeClass}>{pageData.pageNum}</Badge>
       </Button>
       <Button outline color="primary">
         page size:
-        <Badge class={badgeClass}>{pageSize}</Badge>
+        <Badge class={badgeClass}>{pageData.pageSize}</Badge>
       </Button>
       <Button outline color="primary">
         page total:
-        <Badge class={badgeClass}>{pageTotal}</Badge>
+        <Badge class={badgeClass}>{pageData.pageTotal}</Badge>
       </Button>
       <Button outline color="primary">
         items total:
-        <Badge class={badgeClass}>{itemsTotal}</Badge>
+        <Badge class={badgeClass}>{pageData.itemTotal}</Badge>
       </Button>
     </ButtonGroup>
   </div>
@@ -278,7 +288,7 @@
     {/each}
   </TableHead>
   <TableBody>
-    {#each $displayItems as item}
+    {#each $itemsDisplay as item}
       <TableBodyRow>
         {#each displayKeys as key}
           <TableBodyCell>{item[key.field]}</TableBodyCell>
