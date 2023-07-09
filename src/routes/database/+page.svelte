@@ -19,35 +19,33 @@
     Dropdown,
     DropdownItem,
     Badge,
-    Spinner,
-    Tooltip,
   } from "flowbite-svelte";
+  import { onMount } from "svelte";
   // import Toasts from "$lib/Toasts.svelte";
   // let toasts;
   import { Toaster, toast } from "svelte-sonner";
-  import { onMount } from "svelte";
+
+  import MyButton from "$lib/MyButton.svelte";
 
   const badgeClass =
     "w-5 h-4 ml-2 p-0 font-semibold text-primary-800 bg-white dark:text-gray-200 dark:bg-gray-700";
 
   // ctrl+k focus search input element
   const searchHotkey: string[] = ["ctrlKey", "k"];
+  const searchHotKeyDisplay: string[] = ["ctrl", "k"];
   onMount(() => {
     const searchEl = document.getElementById("search");
     const handleKeydown = (event: KeyboardEvent) => {
       const isHotkeyPressed = searchHotkey.every(
         (key) => (event as any)[key] || event.key === key
       );
-
       if (isHotkeyPressed) {
         console.log(`hotkey pressed`);
         event.preventDefault(); // 防止浏览器默认处理
         searchEl?.focus();
       }
     };
-
     document.addEventListener("keydown", handleKeydown);
-
     return () => {
       document.removeEventListener("keydown", handleKeydown);
     };
@@ -122,19 +120,9 @@
   let pageNum = 1;
   let pageSize = 10;
   let pageTotal = Math.ceil(itemsTotal / pageSize);
-  enum PageBtnState {
-    Init,
-    Clicked,
-    Loading,
-  }
-  let prevPageBtnState: PageBtnState = PageBtnState.Init;
-  let nextPageBtnState: PageBtnState = PageBtnState.Init;
-  let prevPageLoadingDelay = 300;
-  let nextPageLoadingDelay = 300;
   const updatePageNum = async (newPageNum) => {
     console.log(`page_num updated: ${newPageNum}`);
-    pageNum = newPageNum;
-    let offset = (pageNum - 1) * pageSize;
+    let offset = (newPageNum - 1) * pageSize;
     let limit = pageSize;
     let res = await fetch(
       `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`
@@ -142,6 +130,7 @@
     if (!res.ok) {
       throw Error(`data fetching respond failed, status=${res.status}`);
     }
+    pageNum = newPageNum;
     let content = await res.json();
     items = content?.results ?? [];
     itemsTotal = content?.count ?? 0;
@@ -149,43 +138,19 @@
     pageTotal = Math.ceil(itemsTotal / pageSize);
   };
   const prevPage = async () => {
-    if (prevPageBtnState !== PageBtnState.Init) {
-      return;
-    }
-    prevPageBtnState = PageBtnState.Clicked;
-    const timeoutId = setTimeout(() => {
-      if (prevPageBtnState === PageBtnState.Clicked) {
-        prevPageBtnState = PageBtnState.Loading;
-      }
-    }, prevPageLoadingDelay);
     try {
       await updatePageNum(Math.max(1, pageNum - 1));
     } catch (e) {
       // toasts.emitToast(e.message, "red");
       toast.error(e.message, { duration: 5000 });
-    } finally {
-      clearTimeout(timeoutId);
-      prevPageBtnState = PageBtnState.Init;
     }
   };
   const nextPage = async () => {
-    if (nextPageBtnState !== PageBtnState.Init) {
-      return;
-    }
-    nextPageBtnState = PageBtnState.Clicked;
-    const timeoutId = setTimeout(() => {
-      if (nextPageBtnState === PageBtnState.Clicked) {
-        nextPageBtnState = PageBtnState.Loading;
-      }
-    }, nextPageLoadingDelay);
     try {
       await updatePageNum(Math.min(pageTotal, pageNum + 1));
     } catch (e) {
       // toasts.emitToast(e.message, "red");
       toast.error(e.message, { duration: 5000 });
-    } finally {
-      clearTimeout(timeoutId);
-      nextPageBtnState = PageBtnState.Init;
     }
   };
 </script>
@@ -225,8 +190,9 @@
       class="h-full"
     >
       <div slot="right">
-        <Kbd class="px-2 py-1">CTRL</Kbd>
-        <Kbd class="px-2 py-1">K</Kbd>
+        {#each searchHotKeyDisplay as item}
+          <Kbd class="px-2 py-1">{item}</Kbd>
+        {/each}
       </div>
     </Input>
     <Button tolor="primary" class="!p-2.5" type="submit">
@@ -250,45 +216,22 @@
   <div class="flex flex-wrap flex-2">
     <ButtonGroup class="mr-10">
       <!-- prev -->
-      <Button
+      <MyButton
         id="prevPage"
-        outline
-        color="primary"
-        on:click={prevPage}
-        class="w-28 flex items-center justify-center"
-      >
-        {#if prevPageBtnState === PageBtnState.Loading}
-          <Spinner class="mr-3" size="4" color="white" />Loading
-        {:else}
-          prev
-        {/if}
-      </Button>
+        width="28"
+        tooltip="Take it easy, i am working ^_^"
+        text="prev"
+        onClick={prevPage}
+      />
       <!-- next -->
-      <Button
+      <MyButton
         id="nextPage"
-        outline
-        color="primary"
-        on:click={nextPage}
-        class="w-28 flex items-center justify-center"
-      >
-        {#if nextPageBtnState === PageBtnState.Loading}
-          <Spinner class="mr-3" size="4" color="white" />Loading
-        {:else}
-          next
-        {/if}
-      </Button>
+        width="28"
+        tooltip="Take it easy, i am working ^_^"
+        text="next"
+        onClick={nextPage}
+      />
     </ButtonGroup>
-    <!-- Tooltip -->
-    {#if prevPageBtnState !== PageBtnState.Init}
-      <Tooltip placement="bottom" trigger="click" triggeredBy="#prevPage">
-        Take it easy, i am working ^_^
-      </Tooltip>
-    {/if}
-    {#if nextPageBtnState !== PageBtnState.Init}
-      <Tooltip placement="bottom" trigger="click" triggeredBy="#nextPage">
-        Take it easy, i am working ^_^
-      </Tooltip>
-    {/if}
     <!-- page metadata -->
     <ButtonGroup>
       <Button outline color="primary">
